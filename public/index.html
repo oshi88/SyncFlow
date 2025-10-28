@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SyncFlow | Blog Sync</title>
+  <style>
+    body {
+      font-family: "Inter", sans-serif;
+      background: #f6f9fc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    h1 {
+      color: #2d3748;
+      margin-bottom: 1rem;
+    }
+
+    .card {
+      background: #fff;
+      padding: 2rem 3rem;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      width: 360px;
+    }
+
+    button {
+      background: #008060;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 18px;
+      margin: 0.5rem;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    button:hover {
+      background: #006e52;
+    }
+
+    #status {
+      margin-top: 1.5rem;
+      font-size: 15px;
+      min-height: 24px;
+    }
+
+    input[type="file"] {
+      margin-top: 1rem;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #ccc;
+      border-top-color: #008060;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+      margin-left: 8px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>SyncFlow</h1>
+    <p>Export and Import Shopify Blogs</p>
+
+    <button id="exportBtn">Export Blogs</button>
+
+    <form id="importForm" enctype="multipart/form-data">
+      <input type="file" id="fileInput" name="file" accept=".csv" required />
+      <button type="submit">Import Blogs</button>
+    </form>
+
+    <div id="status"></div>
+  </div>
+
+  <script>
+    const statusDiv = document.getElementById("status");
+    const exportBtn = document.getElementById("exportBtn");
+    const importForm = document.getElementById("importForm");
+
+    // Show message helper
+    const showMessage = (msg, color = "#2d3748", loading = false) => {
+      statusDiv.innerHTML = loading
+        ? `${msg} <span class="spinner"></span>`
+        : msg;
+      statusDiv.style.color = color;
+    };
+
+    // Export blogs
+    exportBtn.addEventListener("click", async () => {
+      showMessage("Exporting blogs...", "#2d3748", true);
+      try {
+        const res = await fetch("/export-blogs");
+        if (!res.ok) throw new Error("Export failed");
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "blogs.csv";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        showMessage("✅ Blogs exported successfully!", "#008060");
+      } catch (err) {
+        console.error(err);
+        showMessage("❌ Error exporting blogs", "red");
+      }
+    });
+
+    // Import blogs
+    importForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById("fileInput");
+      if (!fileInput.files.length) return showMessage("Please choose a CSV file", "red");
+
+      const formData = new FormData(importForm);
+      showMessage("Importing blogs...", "#2d3748", true);
+      try {
+        const res = await fetch("/import-blogs", { method: "POST", body: formData });
+        const text = await res.text();
+        if (!res.ok) throw new Error(text);
+        showMessage(`✅ ${text}`, "#008060");
+      } catch (err) {
+        console.error(err);
+        showMessage("❌ Error importing blogs", "red");
+      }
+    });
+  </script>
+</body>
+</html>
