@@ -28,27 +28,40 @@ const shopify = shopifyApi({
 
 // ---------- STEP 1: OAuth Flow ----------
 app.get("/auth", async (req, res) => {
-  const shop = req.query.shop;
-  if (!shop) return res.status(400).send("Missing shop parameter");
-
   try {
-    // This function ALREADY handles redirect
-    await shopify.auth.beginAuth(req, res, shop, "/auth/callback", false);
-  } catch (err) {
-    console.error("Auth error:", err);
-    res.status(500).send("Authentication failed");
+    const { shop } = req.query;
+    if (!shop) return res.status(400).send("Missing shop parameter");
+
+    const authRoute = await shopify.auth.begin({
+      shop,
+      callbackPath: "/auth/callback",
+      isOnline: false,
+      rawRequest: req,
+      rawResponse: res,
+    });
+
+    return res.redirect(authRoute);
+  } catch (error) {
+    console.error("❌ Auth start error:", error);
+    res.status(500).send("Failed to start auth");
   }
 });
 
 app.get("/auth/callback", async (req, res) => {
   try {
-    const session = await shopify.auth.validateAuthCallback(req, res, req.query);
+    const session = await shopify.auth.callback({
+      rawRequest: req,
+      rawResponse: res,
+    });
 
     console.log("✅ Authenticated shop:", session.shop);
 
+    // Temporary local storage for demo — replace with database in production
+    fs.writeFileSync("session.json", JSON.stringify(session, null, 2));
+
     res.redirect(`/?shop=${session.shop}`);
   } catch (error) {
-    console.error("❌ OAuth error:", error);
+    console.error("❌ OAuth callback error:", error);
     res.status(500).send("Authentication failed");
   }
 });
